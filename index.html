@@ -19,7 +19,6 @@
             font-family: 'Inter', sans-serif;
             color: #1e293b;
             background-color: #f1f5f9;
-            /* Menggunakan dvh untuk akurasi di mobile browser */
             height: 100vh;
             height: 100dvh;
             margin: 0;
@@ -90,7 +89,6 @@
             margin-bottom: 0.5rem;
         }
 
-        /* Sticky Table Header (Freeze) */
         #details-view thead th {
             position: sticky;
             top: 0;
@@ -100,7 +98,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        /* Custom Scrollbar */
         .custom-scrollbar::-webkit-scrollbar {
             width: 8px;
         }
@@ -112,7 +109,6 @@
             border-radius: 10px;
         }
 
-        /* Animation */
         @keyframes slideUp {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
@@ -121,7 +117,6 @@
             animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Layout Locking */
         #app-container {
             display: flex;
             flex-direction: column;
@@ -140,7 +135,6 @@
 
     <div id="app-container" class="w-full max-w-md bg-[#f8fafc] shadow-2xl relative flex flex-col overflow-hidden">
         
-        <!-- Header Utama - Selalu Statis di Atas -->
         <header class="premium-navy-gradient text-white p-6 shadow-lg z-20 flex-shrink-0">
             <div class="flex items-center gap-4">
                 <i class="fas fa-coins text-3xl opacity-90"></i>
@@ -151,7 +145,6 @@
             </div>
         </header>
 
-        <!-- Form Utama - Dapat di-scroll di Tengah -->
         <main id="calc-view" class="p-6 space-y-6 custom-scrollbar">
             <div class="space-y-4">
                 <div class="input-wrapper">
@@ -203,7 +196,6 @@
                 <button id="btn-calculate" class="flex-1 py-3 rounded-xl nm-btn-primary text-white font-bold text-sm tracking-widest transition-all active:scale-95">HITUNG SEKARANG</button>
             </div>
 
-            <!-- Summary Card -->
             <div id="summary-card" class="hidden animate-slide-up space-y-4">
                 <div class="p-6 rounded-2xl bg-white shadow-xl border border-slate-100">
                     <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">Hasil Proyeksi</h2>
@@ -229,7 +221,6 @@
             </div>
         </main>
 
-        <!-- Footer Utama - Selalu Statis di Bawah -->
         <footer class="p-4 bg-white border-t flex flex-col items-center justify-center gap-1 z-20 flex-shrink-0">
             <div class="flex items-center gap-2 grayscale opacity-50">
                 <i class="fas fa-coins text-[10px]"></i>
@@ -238,7 +229,6 @@
             <p class="text-[7px] text-slate-400 font-medium uppercase tracking-[0.3em]">Imagination Unlimited</p>
         </footer>
 
-        <!-- Details Overlay -->
         <div id="details-view" class="hidden absolute inset-0 bg-white z-[100] flex flex-col">
             <header class="premium-navy-gradient text-white p-6 shadow-lg z-[110] flex-shrink-0">
                 <div class="flex items-center gap-4">
@@ -262,13 +252,10 @@
                             <th class="p-4 text-right">Saldo</th>
                         </tr>
                     </thead>
-                    <tbody id="table-body">
-                        <!-- JS Injection -->
-                    </tbody>
+                    <tbody id="table-body"></tbody>
                 </table>
             </div>
 
-            <!-- Footer Rincian Statis -->
             <footer class="p-4 bg-white border-t flex flex-col items-center justify-center gap-1 flex-shrink-0">
                 <div class="flex items-center gap-2 grayscale opacity-50">
                     <i class="fas fa-coins text-[10px]"></i>
@@ -333,46 +320,50 @@
                 let balance = P;
                 let invested = P;
                 let interestAcc = 0;
-                let interestPending = 0;
+
+                // Logika Ekuivalensi Suku Bunga Bulanan (Standard Finance)
+                let mRate;
+                switch(method) {
+                    case 'daily': 
+                        // Mencari bunga bulanan ekuivalen dari harian (365 hari setahun)
+                        mRate = Math.pow(1 + R/365, 365/12) - 1;
+                        break;
+                    case 'monthly':
+                        mRate = R / 12;
+                        break;
+                    case 'annually':
+                        // Mencari bunga bulanan ekuivalen dari tahunan (12 bulan)
+                        mRate = Math.pow(1 + R, 1/12) - 1;
+                        break;
+                    case 'none':
+                        mRate = R / 12;
+                        break;
+                    default:
+                        mRate = R / 12;
+                }
 
                 for (let i = 1; i <= T; i++) {
+                    const balanceWithDeposit = balance + M;
                     invested += M;
-                    let iMonth = 0;
-
-                    switch(method) {
-                        case 'daily':
-                            let dCalc = balance + M;
-                            const dRate = R / 365;
-                            for(let d=0; d<30; d++) dCalc *= (1 + dRate);
-                            iMonth = dCalc - (balance + M);
-                            balance = dCalc;
-                            break;
-                        case 'monthly':
-                            iMonth = (balance + M) * (R / 12);
-                            balance = (balance + M) + iMonth;
-                            break;
-                        case 'annually':
-                            iMonth = (balance + M) * (R / 12);
-                            interestPending += iMonth;
-                            if (i % 12 === 0) { balance = (balance + M) + interestPending; interestPending = 0; }
-                            else { balance = balance + M; }
-                            break;
-                        case 'none':
-                            iMonth = invested * (R / 12);
-                            interestPending += iMonth;
-                            balance = balance + M;
-                            break;
+                    
+                    let iMonth;
+                    if (method === 'none') {
+                        // Simple interest: bunga hanya dari modal yang sudah disetor
+                        iMonth = invested * (R / 12);
+                    } else {
+                        // Compound interest: bunga dari saldo berjalan
+                        iMonth = balanceWithDeposit * mRate;
                     }
 
+                    balance = balanceWithDeposit + iMonth;
                     interestAcc += iMonth;
-                    let displayB = (method==='none' || method==='annually') ? (balance + interestPending) : balance;
                     
-                    monthlyData.push({ month: i, dep: M, int: iMonth, bal: displayB });
+                    monthlyData.push({ month: i, dep: M, int: iMonth, bal: balance });
                 }
 
                 el.resInvest.innerText = toRupiah(invested);
                 el.resInterest.innerText = toRupiah(interestAcc);
-                el.resFinal.innerText = toRupiah((method==='none' || method==='annually') ? (balance + interestPending) : balance);
+                el.resFinal.innerText = toRupiah(balance);
                 el.summary.classList.remove('hidden');
                 el.summary.scrollIntoView({ behavior: 'smooth', block: 'end' });
             };
@@ -380,6 +371,7 @@
             el.btnReset.onclick = () => {
                 [el.principal, el.monthly, el.period, el.rate].forEach(i => { i.value = ''; i.classList.remove('error'); });
                 el.summary.classList.add('hidden');
+                monthlyData = [];
             };
 
             el.btnDetails.onclick = () => {
